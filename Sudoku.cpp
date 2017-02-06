@@ -24,11 +24,12 @@ void Sudoku::createBoard()
 
 void Sudoku::displayBoard()
 {
+    std::cout << HORIZONTAL_AXIS << std::endl;
     std::cout << EXTERIOR_BOUND << std::endl;
     
     int cellvalue;
     for(int i = 0; i < boardSize_; i++ ){
-        std::cout << "|";
+        std::cout << " " << (i+1) << " |";
         for(int j = 0; j < boardSize_; j++){
             cellvalue = board[i][j].getValue();
             if( cellvalue == -1){
@@ -40,7 +41,5 @@ void Sudoku::displayBoard()
         }
         std::cout << std::endl;
         std::cout << EXTERIOR_BOUND << std::endl;
-
     }
-    
 }

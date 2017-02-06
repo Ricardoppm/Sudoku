@@ -18,5 +18,21 @@ int main(int argc, const char * argv[]) {
     
     sudokuGame.displayBoard();
     
+    std::cout << " Insert initial board state: [1-9][A-I] [value] or PLAY when done\n";
+    
+    bool isComplete=false;
+    std::string input;
+    while(isComplete){
+        std::getline(std::cin, input);
+        
+        if ( input.compare("PLAY")==0) {
+            isComplete = true;
+        }
+        else{
+            
+        }
+    }
+    
+    
     return 0;
 }

@@ -13,7 +13,8 @@
 
 #include "Cell.hpp"
 
-#define EXTERIOR_BOUND "+---+---+---+---+---+---+---+---+---+"
+#define HORIZONTAL_AXIS "     A   B   C   D   E   F   G   H   I  "
+#define EXTERIOR_BOUND  "   +---+---+---+---+---+---+---+---+---+"
 
 class Sudoku
 {
