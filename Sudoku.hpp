@@ -10,6 +10,8 @@
 #define Sudoku_hpp
 
 #include <iostream>
+#include <fstream>
+#include <string>
 
 #include "Cell.hpp"
 
@@ -22,16 +24,17 @@ class Sudoku
         Sudoku(int boardsize);
     
         virtual void displayBoard();
+        bool insertCellValue(int row, int col, int value);
     
     protected:
         Cell board[9][9];
-    
+        virtual void createBoard();
     
     private:
         int boardSize_;
+        bool isValidInsertion(int row, int col, int value);
     
-        virtual void createBoard(); // is this ok???
-
+    
 };
 
 #endif /* Sudoku_hpp */

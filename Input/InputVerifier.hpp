@@ -10,13 +10,23 @@
 #define InputVerifier_hpp
 
 #include <iostream>
+#include <sstream>
 
 class InputVerifier
 {
     public:
+        enum Input { INPUT_PLAY, INPUT_SOLVE, INPUT_SETUP, INPUT_NOK, INPUT_HELP, INPUT_SHOW, INPUT_FILE };
+
         InputVerifier();
     
-        virtual bool isValidInput( std::string input);
+        virtual Input isValidInput( std::string input);
+        int getRow();
+        int getCol();
+        int getValue();
+    
+    private:
+        Input input;
+        int row_, col_, value_;
 };
 
 

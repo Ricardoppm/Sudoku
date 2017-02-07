@@ -43,3 +43,32 @@ void Sudoku::displayBoard()
         std::cout << EXTERIOR_BOUND << std::endl;
     }
 }
+
+bool Sudoku::insertCellValue(int row, int col, int value)
+{
+    if(!isValidInsertion(row, col, value)) return false;
+    board[row][col].setValue(value);
+    return true;
+}
+
+bool Sudoku::isValidInsertion(int row, int col, int value)
+{
+    for(int i=0; i< boardSize_; i++){
+        if( board[row][i].getValue()==value) return false;
+    }
+    
+    for(int i=0; i< boardSize_; i++){
+        if( board[i][col].getValue()==value) return false;
+    }
+    
+    for(int i = (row/3)*3; i < (((row/3)+1)*3); i++){
+        for( int j = (col/3)*3;  j < ((col/3)+1)*3; j++){
+            if( board[i][j].getValue()==value) return false;
+        }
+    }
+    return true;
+    
+}
+
+
+
