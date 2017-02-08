@@ -16,6 +16,11 @@
 
 #define HELP "Existant Commands:\nInsert Cell: [1-9] [A-I] [value: 1-9] \nPlay the game: PLAY\nView solution: SOLVE\n Show board: SHOW\n"
 
+// FILE is = /Users/ricardomartins/Desktop/Projects/C++/SudokuSolver/Puzzles/Easy/sudoku1.txt
+
+
+// FILE is = /Users/ricardomartins/Desktop/Projects/C++/SudokuSolver/Puzzles/Medium/medium1.txt
+
 bool buildFromFile( InputVerifier inputVerifier, Sudoku &sudoku)
 {
     std::cout << "Please insert filename\n";
@@ -69,6 +74,7 @@ int main(int argc, const char * argv[]) {
                 
             case InputVerifier::INPUT_SOLVE :
                 std::cout << "SOLVE input\n";
+                sudokuGame.solveSudoku();
                 break;
                 
             case InputVerifier::INPUT_NOK :
