@@ -44,6 +44,8 @@ void Sudoku::displayBoard() const
     }
 }
 
+
+
 bool Sudoku::insertCellValue(int row, int col, int value)
 {
     if(!isValidInsertion(row, col, value)) return false;
@@ -121,17 +123,15 @@ bool Sudoku::solveSudoku()
                 
                 break;
         }
-        
-        
-        
-     
-            
         displayBoard();
+        
     }
-    
+    searchAlgorithm();
+
 
     return true;
 }
+
 
 
 bool Sudoku::computeInitialBoardState(){
@@ -484,5 +484,117 @@ std::bitset<9>* Sudoku::checkExclusiveGroup( std::vector< std::bitset<9> > vec){
 }
 
 
+void Sudoku::searchAlgorithm(){
+    int remain=0;
+    for(int i=0; i< boardSize_; i++){
+        for (int j=0; j< boardSize_; j++) {
+            if( board[i][j].getValue()==0) remain++;
+        }
+    }
+    
+
+    std::array<Cell, 81> arr;
+    for(int i=0; i<9; i++){
+        for(int j=0; j<9; j++){
+            arr[ (9*i) + j] = board[i][j];
+        }
+    }
+    searchRecursive(arr, remain, true , Coordinates(0,0));
+}
+
+
+bool Sudoku::searchRecursive( std::array<Cell, 81> curr_board , int remain, bool first, Coordinates coords){
+    
+    if(remain==0){
+        for(int i=0; i < boardSize_ ; i++){
+            for (int j=0; j<boardSize_; j++) {
+                solution[i][j] = curr_board[(9*i)+j];
+            }
+        }
+        return true;
+    }
+    if(!first){
+        int value = curr_board[(9*coords.getRow())+coords.getCol()].getValue();
+        
+        std::cout << "Updating (" << coords.getRow() << "," << coords.getCol() << ") with " << value << " ... missing" << remain << std::endl;
+        
+        for(int i=0; i< boardSize_; i++){
+            if( curr_board[(9*coords.getRow())+i].getValue()==0){
+                curr_board[(9*coords.getRow())+i].setValuePossibility(value, true);
+            }
+            if( curr_board[(9*coords.getRow())+i].getNumberPossibilities()==0) return false;
+        }
+        
+        for(int i=0; i< boardSize_; i++){
+            if( curr_board[(9*i)+coords.getCol()].getValue()==0){
+                curr_board[(9*i)+coords.getCol()].setValuePossibility(value, true);
+                if( curr_board[(9*i)+coords.getCol()].getNumberPossibilities()==0) return false;
+            }
+        }
+        
+        for(int i = (coords.getRow()/3)*3; i < (((coords.getRow()/3)+1)*3); i++){
+            for( int j = (coords.getCol()/3)*3;  j < ((coords.getCol()/3)+1)*3; j++){
+                if( curr_board[(9*i)+j].getValue()==0 ){
+                    curr_board[(9*i)+j].setValuePossibility(value, true);
+                    if( curr_board[(9*i)+j].getNumberPossibilities()==0) return false;
+                }
+            }
+        }
+        
+    }
+    
+    
+    std::size_t min = 9;
+    Coordinates coords_new;
+    for(int i=0; i< boardSize_; i++){
+        for (int j=0; j< boardSize_; j++) {
+            if ( curr_board[(9*i)+j].getValue()==0 && curr_board[(9*i)+j].getNumberPossibilities()<min) {
+                min = curr_board[(9*i)+j].getNumberPossibilities();
+                coords_new.setRow(i);
+                coords_new.setCol(j);
+                if (min ==1){
+                    i=9;
+                    j=9;
+                }
+            }
+        }
+    }
+    
+    int row =coords_new.getRow();
+    int col =coords_new.getCol();
+    std::bitset<9> cellPoss = curr_board[(row*9)+col].getPossibleValues();
+    
+    for(int i=0; i< boardSize_; i++){
+        if( !cellPoss[i]){
+            curr_board[(row*9)+col].setValue(i+1);
+            if(searchRecursive(curr_board, remain-1, false, coords_new)) return true;
+        }
+    }
+    return false;
+}
+
+
+
+void Sudoku::displaySolution() const
+{
+    std::cout << HORIZONTAL_AXIS << std::endl;
+    std::cout << EXTERIOR_BOUND << std::endl;
+    
+    int cellvalue;
+    for(int i = 0; i < boardSize_; i++ ){
+        std::cout << " " << (i+1) << " |";
+        for(int j = 0; j < boardSize_; j++){
+            cellvalue = solution[i][j].getValue();
+            if( cellvalue == 0){
+                std::cout << "   |";
+            }
+            else{
+                std::cout << " " << cellvalue << " |";
+            }
+        }
+        std::cout << std::endl;
+        std::cout << EXTERIOR_BOUND << std::endl;
+    }
+}
 
 

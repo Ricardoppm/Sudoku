@@ -26,7 +26,7 @@ bool buildFromFile( InputVerifier inputVerifier, Sudoku &sudoku)
     //std::cout << "Please insert filename\n";
     //std::string filename;
     //std::cin >> filename;
-    std::string filename("/Users/ricardomartins/Desktop/Projects/C++/SudokuSolver/Puzzles/Medium/medium1.txt");
+    std::string filename("/Users/ricardomartins/Desktop/Projects/C++/SudokuSolver/Puzzles/Hard/hard3.txt");
     std::ifstream f_input;
     f_input.open(filename);
     if (!f_input.is_open()) return false;
@@ -91,6 +91,7 @@ int main(int argc, const char * argv[]) {
                 
             case InputVerifier::INPUT_SHOW :
                 sudokuGame.displayBoard();
+                sudokuGame.displaySolution();
                 break;
                 
             case InputVerifier::INPUT_HELP :

@@ -16,6 +16,8 @@
 #include <vector>
 #include <queue>
 #include <unordered_map>
+#include <array>
+
 
 #include "Cell.hpp"
 
@@ -28,10 +30,14 @@ class Sudoku
         Sudoku(int boardsize);
     
         virtual void displayBoard() const;
+        virtual void displaySolution() const;
+
         bool insertCellValue(int row, int col, int value);
         virtual bool solveSudoku();
     protected:
         Cell board[9][9];
+        Cell solution[9][9];
+
         virtual void createBoard();
     
         virtual bool computeInitialBoardState();
@@ -48,6 +54,9 @@ class Sudoku
         Coordinates* verifyIfOnlyPoss(int row, int col, int value) const;
 
         std::bitset<9>* checkExclusiveGroup( std::vector< std::bitset<9> > vec);
+    
+        void searchAlgorithm();
+        bool searchRecursive(std::array<Cell, 81> curr_board, int remain, bool first , Coordinates coords);
 
         std::bitset<9> getHorizontalState(int row) const;
         std::bitset<9> getVerticalState(int col) const;

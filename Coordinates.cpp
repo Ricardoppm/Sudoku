@@ -17,7 +17,7 @@ Coordinates::Coordinates(int row, int col)
 }
 
 void Coordinates::setRow(int row){ row_=row; }
-void Coordinates::setCol(int col){ row_=col; }
+void Coordinates::setCol(int col){ col_=col; }
 
 int Coordinates::getRow(){ return row_;}
 int Coordinates::getCol(){ return col_;}
