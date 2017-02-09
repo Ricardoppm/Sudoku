@@ -78,11 +78,53 @@ bool Sudoku::solveSudoku()
         Coordinates coords = cellToBeSolved.front();
         cellToBeSolved.pop();
         
-        std::cout << "Added (" << coords.getRow() << "," << coords.getCol() << ") . missing " << cellToBeSolved.size() << std::endl;
+        std::cout << "Viewing (" << coords.getRow() << "," << coords.getCol() << ") . missing " << cellToBeSolved.size() << std::endl;
         
-        int value = board[coords.getRow()][coords.getCol()].getValue();
+        Cell::State action = board[coords.getRow()][coords.getCol()].getMode();
+        board[coords.getRow()][coords.getCol()].setRemovedQueue();
         
-        updateBoardState( coords.getRow(),coords.getCol(),value);
+        switch(action){
+                
+            case Cell::STATE_SOLVED:{
+                int value = board[coords.getRow()][coords.getCol()].getValue();
+                
+                updateBoardState( coords.getRow(),coords.getCol(),value);
+                break;
+            }
+            case Cell::STATE_ROW :
+                verifyRowConditionals(coords.getRow());
+                break;
+                
+            case Cell::STATE_COL:
+                verifyColConditionals(coords.getCol());
+                break;
+                
+            case Cell::STATE_NOK:
+                break;
+                
+            case Cell::STATE_ROWCOL:
+                verifyColConditionals(coords.getCol());
+                verifyRowConditionals(coords.getRow());
+                
+                std::bitset<9> blockState = getBlockState(coords.getRow(),coords.getCol()); // View missing values from block
+                
+                for(int value=0; value <9; value++){ // analyse if remaining values have only one possibility
+                    if( !blockState[value]){
+                        Coordinates* cell = verifyIfOnlyPoss(coords.getRow()/3, coords.getCol()/3, value+1);
+                        if( cell != nullptr){
+                            board[cell->getRow()][cell->getCol()].setValue(value+1);
+                            if( !board[cell->getRow()][cell->getCol()].isQueued()) cellToBeSolved.push( (*cell) );
+                            board[cell->getRow()][cell->getCol()].setQueued(Cell::STATE_SOLVED);
+                        }
+                    }
+                }
+                
+                break;
+        }
+        
+        
+        
+     
             
         displayBoard();
     }
@@ -114,10 +156,11 @@ bool Sudoku::computeInitialBoardState(){
                 std::bitset<9> finalState = ( horizontalStates[i] | verticalStates[j] | blockState);
                 board[i][j].setValuePossibility(finalState);
                 
-                // Cells with just one possibility are queued to be solved
+                // Cells with just one possibility are queued, state updated
                 if( board[i][j].getNumberPossibilities()==1){
                     board[i][j].fixValue();
-                    cellToBeSolved.push( Coordinates(i,j));
+                    if(!board[i][j].isQueued()  )cellToBeSolved.push( Coordinates(i,j));
+                    board[i][j].setQueued(Cell::STATE_SOLVED);
                 }
             }
             
@@ -127,7 +170,9 @@ bool Sudoku::computeInitialBoardState(){
                         Coordinates* cell = verifyIfOnlyPoss(i/3, j/3, value+1);
                         if( cell != nullptr){
                             board[cell->getRow()][cell->getCol()].setValue(value+1);
-                            cellToBeSolved.push( (*cell) );
+                            if(!board[cell->getRow()][cell->getCol()].isQueued()  )cellToBeSolved.push( (*cell));
+                            board[cell->getRow()][cell->getCol()].setQueued(Cell::STATE_SOLVED);
+
                         }
                     }
                 }
@@ -147,7 +192,9 @@ bool Sudoku::computeInitialBoardState(){
 void Sudoku::verifyRowConditionals(int row)
 {
     std::unordered_map< std::bitset<9>, int> values;
-    
+    std::vector< std::bitset<9> > existantValues;
+
+    // create map and vec with existant bitsets
     for (int i=0; i<boardSize_; i++) {
         if( board[row][i].getValue()==0){
             if(values.find(board[row][i].getPossibleValues()) != values.end()){
@@ -155,31 +202,73 @@ void Sudoku::verifyRowConditionals(int row)
             }
             else{
                 values[board[row][i].getPossibleValues()]=1;
+                existantValues.push_back(board[row][i].getPossibleValues());
             }
         }
     }
+    // verify if there is exclusive
+    for (auto it : values){
+        //std::cout << " " << it.first << ":" << it.second << std::endl;
+        if( (9-it.first.count())== it.second ) std::cout << it.first << " is exclusive\n";
+    }
     
+    // Exclusive Groups with occurance == existantbits
     for (int i=0; i<boardSize_; i++) {
         std::bitset<9> exclusiveSet = board[row][i].getPossibleValues();
         if( values[exclusiveSet] == board[row][i].getNumberPossibilities()){
-            std::cout << "found exclusive pair = "<< exclusiveSet << std::endl;
-            exclusiveSet.flip();
+            std::cout << "found exclusive pair = ("<< row << "," << i << ")\n";
+            std::bitset<9> exclusiveSetFlipped = exclusiveSet;
+            exclusiveSetFlipped.flip();
+            // found exclusive group
             for (int j=0; j<boardSize_; j++) {
+                // update all remaining
                 if( board[row][j].getValue()==0 && board[row][j].getPossibleValues()!= exclusiveSet){
-                    board[row][j].setValuePossibility( board[row][j].getPossibleValues()|exclusiveSet);
-                    if(board[row][j].getNumberPossibilities()==1){
-                        cellToBeSolved.push( Coordinates(row,j));
+                    std::bitset<9> previousSet = board[row][j].getPossibleValues();
+                    board[row][j].setValuePossibility( previousSet |exclusiveSetFlipped);
+                    previousSet ^=board[row][j].getPossibleValues();
+                    if(board[row][j].getNumberPossibilities()==1){ // add is final
+                        board[row][j].fixValue();
+                        if(!board[row][j].isQueued()) cellToBeSolved.push( Coordinates(row,j));
+                        board[row][j].setQueued(Cell::STATE_SOLVED);
+                    }else if (previousSet.any()){ // add if narrowed possibilities
+                        if(!board[row][j].isQueued()  )cellToBeSolved.push( Coordinates(row,j));
+                        board[row][j].setQueued(Cell::STATE_COL);
                     }
                 }
             }
         }
     }
+    
+    // Check is group of exclusive
+    std::bitset<9>* result;
+    if( (result=checkExclusiveGroup(existantValues))!=nullptr){
+        std::bitset<9> toRemove = *result;
+        toRemove.flip();
+        for(int i=0; i<9; i++){
+            bool valid = ((*result) | board[row][i].getPossibleValues()) == board[row][i].getPossibleValues(); // is part of the group
+            if(!valid && board[row][i].getValue()==0){ // update remaining not from group
+                std::bitset<9> previousSet = board[row][i].getPossibleValues();
+                board[row][i].setValuePossibility(previousSet |toRemove);
+                previousSet = previousSet^board[row][i].getPossibleValues();
+                if(board[row][i].getNumberPossibilities()==1){
+                    board[row][i].fixValue();
+                    if(!board[row][i].isQueued()) cellToBeSolved.push( Coordinates(row,i));
+                    board[row][i].setQueued(Cell::STATE_SOLVED);
+                }else if ( previousSet.any()){
+                    if(!board[row][i].isQueued()) cellToBeSolved.push( Coordinates(row,i));
+                    board[row][i].setQueued(Cell::STATE_COL);
+                }
+                
+            }
+        }
+    }
+    
 }
 
 void Sudoku::verifyColConditionals(int col)
 {
     std::unordered_map< std::bitset<9>, int> values;
-    
+    std::vector< std::bitset<9> > existantValues;
     for (int i=0; i<boardSize_; i++) {
         if( board[i][col].getValue()==0){
             if(values.find(board[i][col].getPossibleValues()) != values.end()){
@@ -187,21 +276,59 @@ void Sudoku::verifyColConditionals(int col)
             }
             else{
                 values[board[i][col].getPossibleValues()]=1;
+                existantValues.push_back(board[i][col].getPossibleValues());
             }
         }
     }
     
+    
+    for (auto it : values){
+        //std::cout << " " << it.first << ":" << it.second << std::endl;
+        if( (9-it.first.count())== it.second ) std::cout << it.first << " is exclusive\n";
+    }
+
+    
     for (int i=0; i<boardSize_; i++) {
         std::bitset<9> exclusiveSet = board[i][col].getPossibleValues();
         if( values[exclusiveSet] == board[i][col].getNumberPossibilities()){
-            std::cout << "found exclusive pair = "<< exclusiveSet << std::endl;
-            exclusiveSet.flip();
+            std::cout << "found exclusive pair = ("<< i << "," << col << ")\n";
+            std::bitset<9> exclusiveSetFlipped = exclusiveSet;
+            exclusiveSetFlipped.flip();
             for (int j=0; j<boardSize_; j++) {
                 if( board[j][col].getValue()==0 && board[j][col].getPossibleValues()!= exclusiveSet){
-                    board[j][col].setValuePossibility( board[j][col].getPossibleValues()|exclusiveSet);
+                    std::bitset<9> previousSet = board[j][col].getPossibleValues();
+                    board[j][col].setValuePossibility( previousSet|exclusiveSetFlipped);
+                    previousSet^=board[j][col].getPossibleValues();
                     if(board[j][col].getNumberPossibilities()==1){
-                        cellToBeSolved.push( Coordinates(j,col));
+                        board[j][col].fixValue();
+                        if(!board[j][col].isQueued()) cellToBeSolved.push( Coordinates(j,col));
+                        board[j][col].setQueued(Cell::STATE_SOLVED);
+                    }else if (previousSet.any()){ // add if narrowed possibilities
+                        if(!board[j][col].isQueued()  )cellToBeSolved.push( Coordinates(j,col));
+                        board[j][col].setQueued(Cell::STATE_ROW);
                     }
+                }
+            }
+        }
+    }
+    
+    std::bitset<9>* result;
+    if( (result=checkExclusiveGroup(existantValues))!=nullptr){
+        std::bitset<9> toRemove = *result;
+        toRemove.flip();
+        for(int i=0; i<9; i++){
+            bool valid = ((*result) | board[i][col].getPossibleValues()) == board[i][col].getPossibleValues();
+            if(!valid && board[i][col].getValue()==0){
+                std::bitset<9> previousSet = board[i][col].getPossibleValues();
+                board[i][col].setValuePossibility( previousSet|toRemove);
+                previousSet ^= board[i][col].getPossibleValues();
+                if(board[i][col].getNumberPossibilities()==1){
+                    board[i][col].fixValue();
+                    if(!board[i][col].isQueued()) cellToBeSolved.push( Coordinates(i,col));
+                    board[i][col].setQueued(Cell::STATE_SOLVED);
+                }else if( previousSet.any()){
+                    if(!board[i][col].isQueued()) cellToBeSolved.push( Coordinates(i,col));
+                    board[i][col].setQueued(Cell::STATE_ROW);
                 }
             }
         }
@@ -269,23 +396,42 @@ void Sudoku::updateBoardState(int row, int col, int value)
 {
     for(int i=0; i< boardSize_; i++){
         if( board[row][i].getValue()==0){
-            board[row][i].setValuePossibility(value, true);
-            if( board[row][i].getNumberPossibilities()==1) cellToBeSolved.push( Coordinates(row,i));
+            if(board[row][i].setValuePossibility(value, true) ){
+                if( !board[row][i].isQueued() )  cellToBeSolved.push( Coordinates(row,i));
+                board[row][i].setQueued(Cell::STATE_ROWCOL);
+            }
+            if( board[row][i].getNumberPossibilities()==1 && !board[row][i].isQueued()){
+                if( !board[row][i].isQueued() )cellToBeSolved.push( Coordinates(row,i));
+                board[row][i].setQueued(Cell::STATE_SOLVED);
+            }
         }
     }
     
     for(int i=0; i< boardSize_; i++){
         if( board[i][col].getValue()==0){
-            board[i][col].setValuePossibility(value, true);
-            if( board[i][col].getNumberPossibilities()==1) cellToBeSolved.push( Coordinates(i,col));
+            if(board[i][col].setValuePossibility(value, true)){
+                if( !board[i][col].isQueued() )  cellToBeSolved.push( Coordinates(i,col));
+                board[i][col].setQueued(Cell::STATE_ROWCOL);
+            }
+            if( board[i][col].getNumberPossibilities()==1){
+                if( !board[i][col].isQueued() )  cellToBeSolved.push( Coordinates(i,col));
+                board[i][col].setQueued(Cell::STATE_SOLVED);
+            }
         }
     }
     
     for(int i = (row/3)*3; i < (((row/3)+1)*3); i++){
         for( int j = (col/3)*3;  j < ((col/3)+1)*3; j++){
             if( board[i][j].getValue()==0 ){
-                board[i][j].setValuePossibility(value, true);
-                if( board[i][j].getNumberPossibilities()==1) cellToBeSolved.push( Coordinates(i,j));
+                if(board[i][j].setValuePossibility(value, true)){
+                    if( !board[i][j].isQueued()) cellToBeSolved.push( Coordinates(i,j));
+                    board[i][j].setQueued(Cell::STATE_ROWCOL);
+                    
+                }
+                if( board[i][j].getNumberPossibilities()==1){
+                    if( !board[i][j].isQueued()) cellToBeSolved.push( Coordinates(i,j));
+                    board[i][j].setQueued(Cell::STATE_SOLVED);
+                }
             }
         }
     }
@@ -298,13 +444,44 @@ void Sudoku::updateBoardState(int row, int col, int value)
             Coordinates* cell = verifyIfOnlyPoss(row/3, col/3, value+1);
             if( cell != nullptr){
                 board[cell->getRow()][cell->getCol()].setValue(value+1);
-                cellToBeSolved.push( (*cell) );
+                if( !board[cell->getRow()][cell->getCol()].isQueued()) cellToBeSolved.push( (*cell) );
+                board[cell->getRow()][cell->getCol()].setQueued(Cell::STATE_SOLVED);
             }
         }
     }
 }
 
-
+std::bitset<9>* Sudoku::checkExclusiveGroup( std::vector< std::bitset<9> > vec){
+    
+    std::vector<bool> v(vec.size());
+    
+    
+    for(int i=3 ; i < vec.size(); i++){
+        std::fill(v.begin(), v.begin() + i, true);
+        
+        do {
+            
+            std::bitset<9> total( std::string("000000000"));
+            for (int i = 0; i < vec.size(); ++i) {
+                if (v[i]) {
+                    std::bitset<9> aux = vec[i];
+                    total = total| (aux.flip());
+                }
+            }
+            if( total.count()==i){
+                std::cout << "Group Exclusive -> " << total << std::endl;
+                std::bitset<9> affected( std::string("000000000"));
+                for (int i = 0; i < vec.size(); ++i) {
+                    if( v[i]) affected.flip(i);
+                }
+                return new std::bitset<9>(total.flip());
+            }
+            
+        } while (std::prev_permutation(v.begin(), v.end()));
+        
+    }
+    return nullptr;
+}
 
 
 

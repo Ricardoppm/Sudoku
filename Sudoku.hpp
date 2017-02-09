@@ -47,7 +47,8 @@ class Sudoku
         bool isValidInsertion(int row, int col, int value) const;
         Coordinates* verifyIfOnlyPoss(int row, int col, int value) const;
 
-    
+        std::bitset<9>* checkExclusiveGroup( std::vector< std::bitset<9> > vec);
+
         std::bitset<9> getHorizontalState(int row) const;
         std::bitset<9> getVerticalState(int col) const;
         std::bitset<9> getBlockState(int row, int col) const;

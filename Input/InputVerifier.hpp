@@ -25,7 +25,6 @@ class InputVerifier
         int getValue();
     
     private:
-        Input input;
         int row_, col_, value_;
 };
 
